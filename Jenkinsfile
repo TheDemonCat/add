@@ -27,18 +27,62 @@ pipeline {
                     }
 
                 }
-                stage('ADD Test') {
+                stage('дымовое тестирование') {
                     steps {
                         script{
                             docker.withRegistry(DOCKER_REGISTRY_URL, DOCKER_REGISTRY_USER_CREDENTIONALS_ID) {
-                                withDockerContainer(args: '-u root:root', image: 'registry.silverbulleters.org/landscape/ops/isasacode/vanessa-runner:8.3.15.1489-latest') {
-                                    cmdRun("set -xe && xstart && novnc && runxfce4 && echo >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && echo NH_SERVER_ADDR = 10.77.1.141 >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && bash")
-                                    cmdRun("rm -rf /usr/share/oscript/lib/opm/oscript_modules/fs")
-                                    cmdRun("opm run init file")
-                                    cmdRun("opm build .")
-                                    archiveArtifacts 'add-*.zip'
-                                    archiveArtifacts 'add-*.ospx'
+                                withDockerContainer(args: '-p 6080:6080 -u root:root', image: 'registry.silverbulleters.org/landscape/ops/isasacode/vanessa-runner:8.3.15.1489-latest') {
+                                    // cmdRun("set -xe && xstart && echo >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && echo NH_SERVER_ADDR = ${env.serverHasp} >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && bash")
+                                    cmdRun("set -xe && xstart && echo >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && echo NH_SERVER_ADDR = ${env.serverHasp} >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && bash")
                                     cmdRun("vrunner xunit tests/smoke --settings tools/JSON/vrunner.json --reportsxunit \"ГенераторОтчетаJUnitXML{build/junit-smoke/junit.xml};ГенераторОтчетаAllureXMLВерсия2{build/allure/allure.xml}\"")
+                                    }
+                            }
+                        }
+                    }
+                }
+
+                stage('Cобственные TDD-тесты') {
+                    steps {
+                        script{
+                            docker.withRegistry(DOCKER_REGISTRY_URL, DOCKER_REGISTRY_USER_CREDENTIONALS_ID) {
+                                withDockerContainer(args: '-p 6081:6080 -u root:root', image: 'registry.silverbulleters.org/landscape/ops/isasacode/vanessa-runner:8.3.15.1489-latest') {
+                                    cmdRun("set -xe && xstart && novnc && runxfce4 && echo >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && echo NH_SERVER_ADDR = ${env.serverHasp} >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && bash")
+                                    cmdRun("vrunner xunit tests/xunit --settings tools/JSON/vrunner.json --reportsxunit \"ГенераторОтчетаJUnitXML{build/junit-tdd/junit-tdd.xml};ГенераторОтчетаAllureXMLВерсия2{build/allure-tdd/allure.xml}\"")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('BDD тестирование (библиотеки)') {
+                    steps {
+                        script{
+                            docker.withRegistry(DOCKER_REGISTRY_URL, DOCKER_REGISTRY_USER_CREDENTIONALS_ID) {
+                                withDockerContainer(args: '-p 6082:6080 -u root:root', image: 'registry.silverbulleters.org/landscape/ops/isasacode/vanessa-runner:8.3.15.1489-latest') {
+                                    cmdRun("set -xe && xstart && novnc && runxfce4 && echo >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && echo NH_SERVER_ADDR = ${env.serverHasp} >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && bash")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json --path features/libraries")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('BDD тестирование (ядро)') {
+                    steps {
+                        script{
+                            docker.withRegistry(DOCKER_REGISTRY_URL, DOCKER_REGISTRY_USER_CREDENTIONALS_ID) {
+                                withDockerContainer(args: '-p 6083:6080 -u root:root', image: 'registry.silverbulleters.org/landscape/ops/isasacode/vanessa-runner:8.3.15.1489-latest') {
+                                    cmdRun("set -xe && xstart && novnc && runxfce4 && echo >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && echo NH_SERVER_ADDR = ${env.serverHasp} >> /opt/1C/v8.3/x86_64/conf/nethasp.ini && bash")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/StepsRunner")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/Core/OpenForm")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/Core/TestClient")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path ffeatures/StepsGenerator")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/StepsProgramming")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/Core/FeatureLoad")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/Core/FeatureReader")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/Core/FeatureWrite")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/Core/Translate")
+                                    cmdRun("vrunner vanessa --settings tools/JSON/vrunner.json  --path features/Core/ExpectedSomething")
                                 }
                             }
                         }
